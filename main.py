@@ -5,6 +5,7 @@ import pathlib
 from discord.ext.commands import has_permissions
 import dotenv
 from pymongo import MongoClient
+from scraper import get_fleet_carrier
 
 dotenv.load_dotenv()
 token = str(os.getenv("TOKEN"))
@@ -22,6 +23,10 @@ def get_database(name, _pass, host, app_name):
 
 bot = discord.Bot()
 db = get_database(db_name, db_password, db_host, db_appname)
+fleet_carriers = db['fleet_carriers']
+commanders = db['cmdrs']
+tips = db['tips']
+
 
 @bot.event
 async def on_ready():
@@ -39,5 +44,11 @@ async def on_command_error(ctx, error):
     else:
         await ctx.send("Some error occurred.")
 
+
+@bot.slash_command(name="findfc", description="Returns link to Fleet Carrier from identifier.")
+async def info(ctx, identifier: str):
+    text = get_fleet_carrier(identifier)
+    print(text)
+    await ctx.respond(text)
 
 bot.run(token)

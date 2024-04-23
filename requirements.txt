@@ -1,2 +1,6 @@
 py-cord
 python-dotenv
+pymongo
+bs4
+lxml
+requests
