@@ -1,18 +1,26 @@
 import os
+from pprint import pprint
+
 import discord
 import json
 import pathlib
 from discord.ext.commands import has_permissions
 import dotenv
 from pymongo import MongoClient
-from scraper import get_fleet_carrier
+from scraper import get_fleet_carrier, find_carrier_by_name, get_cmdr
 
 dotenv.load_dotenv()
 token = str(os.getenv("TOKEN"))
+
 db_name = str(os.getenv("DB_USERNAME"))
 db_host = str(os.getenv("DB_HOST"))
 db_password = str(os.getenv("DB_PASSWORD"))
 db_appname = str(os.getenv("DB_APPNAME"))
+
+app_name = str(os.getenv("API_APPNAME"))
+api_key = str(os.getenv("API_KEY"))
+cmdr_name = str(os.getenv("API_CMDR_NAME"))
+cmdr_id = str(os.getenv("API_FDEV_ID"))
 
 
 def get_database(name, _pass, host, app_name):
@@ -45,10 +53,23 @@ async def on_command_error(ctx, error):
         await ctx.send("Some error occurred.")
 
 
-@bot.slash_command(name="findfc", description="Returns link to Fleet Carrier from identifier.")
-async def info(ctx, identifier: str):
+@bot.slash_command(name="findfc", description="")
+async def fc_by_id(ctx, identifier: str):
     text = get_fleet_carrier(identifier)
     print(text)
+    await ctx.respond(text.join("\n"))
+
+
+@bot.slash_command(name="findfcname", description="")
+async def fc_by_name(ctx, name: str):
+    text = find_carrier_by_name(name)
+    print(text)
+    await ctx.respond(text)
+
+
+@bot.slash_command(name="findcmdr", description="")
+async def cmdr_by_name(ctx, name: str):
+    text = get_cmdr(name, app_name, api_key, cmdr_name, cmdr_id)
     await ctx.respond(text)
 
 bot.run(token)

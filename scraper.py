@@ -3,10 +3,12 @@ import re
 import urllib
 import urllib.error
 import urllib.parse
+from pprint import pprint
 
 import unicodedata
 from bs4 import BeautifulSoup
 import requests
+import datetime
 
 
 # Prep functions
@@ -55,7 +57,8 @@ def get_fleet_carrier(identifier: str):
         allegiance = [i.find("div", class_="itempairvalue").text for i in info if "Allegiance" in i.text][0]
         owner = [i.text for i in [i for i in info if "Owner" in i.text][0].find_all("a") if "/elite/cmdr/" in i.get("href")][0]
         try:
-            owner_squadron = [i.text for i in [i for i in info if "Owner" in i.text][0].find_all("a") if "/elite/squadron/" in i.get("href")][0]
+            owner_squadron = [i.text for i in [i for i in info if "Owner" in i.text][0].find_all("a") if
+                              "/elite/squadron/" in i.get("href")][0]
         except IndexError:
             owner_squadron = "None"
         info = {
@@ -69,3 +72,64 @@ def get_fleet_carrier(identifier: str):
             "owner_squadron": owner_squadron
         }
         return info
+
+
+# Get Fleet Carrier by name (ex. N.S.C. Chicky Nuggies)
+# URL: https://inara.cz/elite/station/?search=N.S.C.%20Chicky%20Nuggies
+def find_carrier_by_name(name: str):
+    url = "https://inara.cz/elite/station/?search=" + url_quote(name)
+    soup = get_soup(url)
+    try:
+        if soup.find("div", class_="block1").find("div", class_="notice0").text == "No stations were found.":
+            return "No fleet carrier found with that name."
+    except:
+        urls = soup.find("div", class_="mainblock").find_all("a")
+        ids = []
+        for i in urls:
+            ids.append(i.find("span", class_="minor").text[1:-1])
+        return f"Found fleet carriers with that name: {ids}"
+
+
+# Get Commander by Name using API
+def get_cmdr(name: str, app_name, api_key, cmdr_name, cmdr_id):
+    # 2017-05-02T17:30:49Z
+    ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    send_json = {
+        "header": {
+            "appName": app_name,
+            "appVersion": "0.0.1",
+            "isBeingDeveloped": True,
+            "APIkey": api_key,
+            "commanderName": cmdr_name,
+            "commanderFrontierID": cmdr_id
+        },
+        "events": [
+            {
+                "eventName": "getCommanderProfile",
+                "eventTimestamp": ts,
+                "eventData": {
+                    "searchName": name
+                }
+            }
+        ]
+    }
+    url = "https://inara.cz/inapi/v1/"
+    r = requests.post(url, json=send_json)
+    pprint(r.json())
+    full_json = r.json()["events"][0]
+    if full_json["eventStatus"] != 200:
+        return f"ERR {full_json['eventStatus']}: {full_json['eventStatusText']}"
+    full_json = full_json["eventData"]
+    pprint(full_json)
+    url = full_json["inaraURL"]
+    username = full_json["userName"]
+    try:
+        squadron = full_json["commanderSquadron"]["squadronName"]
+    except KeyError:
+        squadron = None
+    try:
+        other_names = full_json["otherNamesFound"]
+    except KeyError:
+        other_names = None
+    output = f"CMDR {username}.\n{f'Squadron {squadron}\n' if squadron is not None else 'Not in Squadron\n'}{f'Other possible names: {' '.join(other_names)}\n' if other_names is not None else ''}Profile URL: {url}"
+    return output
