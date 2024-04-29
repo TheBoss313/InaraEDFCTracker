@@ -45,7 +45,7 @@ async def on_command_error(ctx, error):
         await ctx.send("Some error occurred.")
 
 
-@bot.slash_command(name="findfc", description="")
+@bot.slash_command(name="findfc", description="Searches for Fleet Carriers by identifier.")
 async def fc_by_id(ctx, identifier: str):
     text = get_fleet_carrier(identifier, fleet_carriers)
     await ctx.respond(text)
@@ -57,7 +57,7 @@ async def fc_by_name(ctx, name: str):
     await ctx.respond(text)
 
 
-@bot.slash_command(name="findcmdr", description="")
+@bot.slash_command(name="findcmdr", description="Searches for CMDRs by name.")
 async def cmdr_by_name(ctx, name: str):
     text = get_cmdr(name, app_name, api_key, cmdr_name, cmdr_id, commanders)
     await ctx.respond(text)
