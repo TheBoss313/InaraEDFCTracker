@@ -9,6 +9,8 @@ import unicodedata
 from bs4 import BeautifulSoup
 import requests
 import datetime
+from database import *
+from time import time
 
 
 # Prep functions
@@ -90,9 +92,18 @@ def find_carrier_by_name(name: str):
         return f"Found fleet carriers with that name: {ids}"
 
 
-# Get Commander by Name using API
-def get_cmdr(name: str, app_name, api_key, cmdr_name, cmdr_id):
-    # 2017-05-02T17:30:49Z
+# Get Commander by Name using API or DB
+def get_cmdr(name: str, app_name, api_key, cmdr_name, cmdr_id, collection):
+    flag = False
+    # Check if the name is in the database
+    db_name = find_value(collection, "name_lower", name.lower())
+    if db_name:
+        db_name = db_name[0]
+        if time() - db_name["last_updated"] < 86400:  # Time passed < 24h
+            # TODO: Add logging of from DB/from API, as well as name requested
+            return f"CMDR {name}.\n{f'Squadron {db_name['squadron']}\n' if db_name['squadron'] is not None else 'Not in Squadron\n'}Profile URL: {db_name['url']}"
+        else:  # Time passed > 24h
+            flag = True
     ts = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     send_json = {
         "header": {
@@ -115,12 +126,15 @@ def get_cmdr(name: str, app_name, api_key, cmdr_name, cmdr_id):
     }
     url = "https://inara.cz/inapi/v1/"
     r = requests.post(url, json=send_json)
-    pprint(r.json())
     full_json = r.json()["events"][0]
     if full_json["eventStatus"] != 200:
-        return f"ERR {full_json['eventStatus']}: {full_json['eventStatusText']}"
+        if full_json["eventStatus"] == 204:
+            return f"Inara Doesn't have a profile for {name}."
+        elif full_json["eventStatus"] == 202:
+            pass
+        else:
+            return f"ERR {full_json['eventStatus']}: {full_json['eventStatusText']}"
     full_json = full_json["eventData"]
-    pprint(full_json)
     url = full_json["inaraURL"]
     username = full_json["userName"]
     try:
@@ -131,5 +145,23 @@ def get_cmdr(name: str, app_name, api_key, cmdr_name, cmdr_id):
         other_names = full_json["otherNamesFound"]
     except KeyError:
         other_names = None
+    data_json = {
+        "username": username,
+        "squadron": squadron,
+        "url": url,
+        "last_updated": time(),
+        "name_lower": username.lower()
+    }
+    if not flag:
+        insert_new_value(collection, data_json)
+    else:
+        if username == name:
+            update_value(collection, "username", name, data_json)
+        else:
+            if find_value(collection, "username", username) is None:
+                insert_new_value(collection, data_json)
+            else:
+                update_value(collection, "username", username, data_json)
+    # TODO: Add logging of from DB/from API, as well as name requested
     output = f"CMDR {username}.\n{f'Squadron {squadron}\n' if squadron is not None else 'Not in Squadron\n'}{f'Other possible names: {' '.join(other_names)}\n' if other_names is not None else ''}Profile URL: {url}"
     return output

@@ -1,13 +1,11 @@
 import os
 from pprint import pprint
-
 import discord
 import json
 import pathlib
 from discord.ext.commands import has_permissions
 import dotenv
-from pymongo import MongoClient
-from scraper import get_fleet_carrier, find_carrier_by_name, get_cmdr
+from scraper import get_fleet_carrier, find_carrier_by_name, get_cmdr, MongoClient, get_database, insert_new_value, find_value, delete_value, update_value
 
 dotenv.load_dotenv()
 token = str(os.getenv("TOKEN"))
@@ -21,12 +19,6 @@ app_name = str(os.getenv("API_APPNAME"))
 api_key = str(os.getenv("API_KEY"))
 cmdr_name = str(os.getenv("API_CMDR_NAME"))
 cmdr_id = str(os.getenv("API_FDEV_ID"))
-
-
-def get_database(name, _pass, host, app_name):
-    CONNECTION_STRING = f"mongodb+srv://{name}:{_pass}@{host}.xnsguws.mongodb.net/?retryWrites=true&w=majority&appName={app_name}"
-    client = MongoClient(CONNECTION_STRING)
-    return client['newpBot']
 
 
 bot = discord.Bot()
@@ -69,7 +61,7 @@ async def fc_by_name(ctx, name: str):
 
 @bot.slash_command(name="findcmdr", description="")
 async def cmdr_by_name(ctx, name: str):
-    text = get_cmdr(name, app_name, api_key, cmdr_name, cmdr_id)
+    text = get_cmdr(name, app_name, api_key, cmdr_name, cmdr_id, commanders)
     await ctx.respond(text)
 
 bot.run(token)
