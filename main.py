@@ -47,9 +47,8 @@ async def on_command_error(ctx, error):
 
 @bot.slash_command(name="findfc", description="")
 async def fc_by_id(ctx, identifier: str):
-    text = get_fleet_carrier(identifier)
-    print(text)
-    await ctx.respond(text.join("\n"))
+    text = get_fleet_carrier(identifier, fleet_carriers)
+    await ctx.respond(text)
 
 
 @bot.slash_command(name="findfcname", description="")

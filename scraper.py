@@ -43,15 +43,33 @@ def get_soup(url):
 
 # Get Fleet Carrier by identifier (ex. T9X-LQV)
 # URL: https://inara.cz/elite/station/?search=T9X-LQV
-def get_fleet_carrier(identifier: str):
+def get_fleet_carrier(identifier: str, collection):
+    flag = False
+    # Check if the identifier is in the database
+    db_name = find_value(collection, "id_lower", identifier.lower())
+    if db_name:
+        db_name = db_name[0]
+        if time() - db_name["last_updated"] < 86400:  # Time passed < 24h
+            # TODO: Add logging of from DB/from API, as well as name requested
+            return f"Carrier {db_name['name']}.\n\
+Owned by: {db_name['owner']}\n\
+{f'Part of {db_name['owner_squadron']}\n' if db_name['owner_squadron'] is not None else 'Not in Squadron\n'}\
+Last recorded location: {db_name['star_system']}\n\
+Station Distance: {db_name['station_distance']}\n\
+Docking Access: {db_name['docking_access']}\n\
+Allow Notorious: {db_name['notorious']}\n\
+Allegiance: {db_name['allegiance']}\n\
+Carrier URL: {db_name['url']}"
+        else:  # Time passed > 24h
+            flag = True
     url = "https://inara.cz/elite/station/?search=" + identifier
     soup = get_soup(url)
     if not soup.title.string.startswith(identifier):
         return "No fleet carrier found with that identifier."
     else:
         name = [i.text for i in soup.find("div", class_="headercontent").find_all("a") if "/elite/station/" in i.get("href")][0]
+        url_station = "https://inara.cz"+[i.get("href") for i in soup.find("div", class_="headercontent").find_all("a") if "/elite/station/" in i.get("href")][0]
         info = soup.find_all("div", class_="itempaircontainer")
-
         star_system = [i.find("a").text for i in info if "Star system" in i.text][0]
         station_distance = [i.find("div", class_="itempairvalue").text for i in info if "Station distance" in i.text][0]
         docking_access = [i.find("div", class_="itempairvalue").text for i in info if "Docking access" in i.text][0]
@@ -62,7 +80,7 @@ def get_fleet_carrier(identifier: str):
             owner_squadron = [i.text for i in [i for i in info if "Owner" in i.text][0].find_all("a") if
                               "/elite/squadron/" in i.get("href")][0]
         except IndexError:
-            owner_squadron = "None"
+            owner_squadron = None
         info = {
             "name": name,
             "star_system": star_system,
@@ -71,9 +89,26 @@ def get_fleet_carrier(identifier: str):
             "notorious": notorious,
             "allegiance": allegiance,
             "owner": owner,
-            "owner_squadron": owner_squadron
+            "owner_squadron": owner_squadron,
+            "url": url_station,
+            "last_updated": time(),
+            "id_lower": identifier.lower()
         }
-        return info
+        if not flag:
+            insert_new_value(collection, info)
+        else:
+            update_value(collection, "id_lower", identifier.lower(), info)
+        # TODO: Add logging of from DB/from API, as well as name requested
+        output = f"Carrier {name}.\n\
+Owned by: {owner}\n\
+{f'Part of {owner_squadron}\n' if owner_squadron is not None else 'Not in Squadron\n'}\
+Last recorded location: {star_system}\n\
+Station Distance: {station_distance}\n\
+Docking Access: {docking_access}\n\
+Allow Notorious: {notorious}\n\
+Allegiance: {allegiance}\n\
+Carrier URL: {url_station}"
+        return output
 
 
 # Get Fleet Carrier by name (ex. N.S.C. Chicky Nuggies)
