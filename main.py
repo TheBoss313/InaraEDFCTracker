@@ -51,10 +51,9 @@ async def fc_by_id(ctx, identifier: str):
     await ctx.respond(text)
 
 
-@bot.slash_command(name="findfcname", description="")
+@bot.slash_command(name="findfcname", description="Looks up Fleet Carriers by name. Limited to 30 results.")
 async def fc_by_name(ctx, name: str):
-    text = find_carrier_by_name(name)
-    print(text)
+    text = find_carrier_by_name(name, fleet_carriers)
     await ctx.respond(text)
 
 
